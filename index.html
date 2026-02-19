@@ -14,7 +14,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="✏️ To do today">
     <meta name="twitter:image" content="https://todotodayy.vercel.app/og-image.png">
-
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
@@ -1428,6 +1428,13 @@
                 font-size: 0.8em;
                 padding: 0.6em 1.2em;
             }
+
+            /* Prevent iOS/Android from zooming in when input is focused.
+               Browsers zoom when font-size < 16px — force it to 16px on mobile.
+               The scaler already handles visual sizing so this won't look different. */
+            .task-text {
+                font-size: 16px;
+            }
         }
 
         /* Touch device enhancements */
@@ -2005,13 +2012,21 @@
             renderTasks();
             
             // Focus on the first input field
-            setTimeout(() => {
+            // On mobile: focus synchronously inside the user-gesture call stack
+            // so the keyboard appears without triggering a zoom.
+            // On desktop: small timeout is fine and avoids any race with renderTasks.
+            const focusInput = () => {
                 const firstInput = tasksContainer.querySelector('.task-text');
                 if (firstInput) {
                     firstInput.focus();
                     firstInput.select();
                 }
-            }, 10);
+            };
+            if (window.innerWidth <= 700) {
+                focusInput();
+            } else {
+                setTimeout(focusInput, 10);
+            }
         }
 
         function createTask(text, status = 'added') {
