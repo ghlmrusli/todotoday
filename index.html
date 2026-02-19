@@ -1766,21 +1766,19 @@
             let drawingHistory = [];
             let historyStep = -1;
             
-            // Set canvas size
-            const resizeCanvas = () => {
-                const rect = canvas.getBoundingClientRect();
-                const oldWidth = canvas.width;
-                const oldHeight = canvas.height;
-                canvas.width = rect.width;
-                canvas.height = rect.height;
-                
-                // Only load if canvas was resized from default
-                if (oldWidth !== rect.width || oldHeight !== rect.height) {
-                    loadCanvasState();
-                }
-            };
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
+            // Use a fixed internal canvas resolution (matches the page's natural size).
+            // CSS stretches the canvas element to fill its container visually.
+            // This means the drawing never shifts when the browser is resized or
+            // when the scaler CSS transform changes — only getCanvasPos() needs
+            // to account for the visual-to-buffer ratio, which it already does.
+            const CANVAS_W = 300;
+            const CANVAS_H = 500;
+            canvas.width  = CANVAS_W;
+            canvas.height = CANVAS_H;
+            canvas.style.width  = '100%';
+            canvas.style.height = '100%';
+            loadCanvasState();
+            // No resize listener needed — fixed resolution stays stable.
             
             let isDrawing = false;
             let lastX = 0;
@@ -1810,33 +1808,45 @@
             // Initial state
             saveHistory();
             
+            // Map a screen-space client position to canvas pixel coordinates.
+            // getBoundingClientRect() returns visual (post-CSS-transform) size,
+            // so we divide by the ratio between canvas buffer size and visual size
+            // to account for the scaler's transform: scale().
+            const getCanvasPos = (clientX, clientY) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width  / rect.width;
+                const scaleY = canvas.height / rect.height;
+                return {
+                    x: (clientX - rect.left) * scaleX,
+                    y: (clientY - rect.top)  * scaleY
+                };
+            };
+
             const startDrawing = (e) => {
                 isDrawing = true;
-                const rect = canvas.getBoundingClientRect();
-                const x = (e.clientX || e.touches[0].clientX) - rect.left;
-                const y = (e.clientY || e.touches[0].clientY) - rect.top;
-                lastX = x;
-                lastY = y;
+                const client = e.touches ? e.touches[0] : e;
+                const pos = getCanvasPos(client.clientX, client.clientY);
+                lastX = pos.x;
+                lastY = pos.y;
             };
             
             const draw = (e) => {
                 if (!isDrawing) return;
                 e.preventDefault();
                 
-                const rect = canvas.getBoundingClientRect();
-                const x = (e.clientX || e.touches[0].clientX) - rect.left;
-                const y = (e.clientY || e.touches[0].clientY) - rect.top;
+                const client = e.touches ? e.touches[0] : e;
+                const pos = getCanvasPos(client.clientX, client.clientY);
                 
                 ctx.beginPath();
                 ctx.moveTo(lastX, lastY);
-                ctx.lineTo(x, y);
+                ctx.lineTo(pos.x, pos.y);
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.lineWidth = currentThickness;
                 ctx.strokeStyle = currentColor;
                 ctx.stroke();
                 
-                lastX = x;
-                lastY = y;
+                lastX = pos.x;
+                lastY = pos.y;
             };
             
             const stopDrawing = () => {
@@ -1966,7 +1976,9 @@
                 const ctx = canvas.getContext('2d');
                 const img = new Image();
                 img.onload = () => {
-                    ctx.drawImage(img, 0, 0);
+                    // Always draw scaled to fill the full fixed canvas buffer
+                    // so saved drawings are stable regardless of when they were saved
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 };
                 img.src = saved;
             }
