@@ -15,12 +15,12 @@
     <meta name="twitter:title" content="✏️ To do today">
     <meta name="twitter:image" content="https://todotodayy.vercel.app/og-image.png">
 
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✏️</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Handlee&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Fuzzy+Bubbles&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bungee+Shade&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
     <style>
         @font-face {
@@ -38,13 +38,23 @@
 
         body {
             margin: 0;
-            display: flex;
-            min-height: 100dvh;
-            perspective: 1000px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: hsl(180 68% 5%);
             background: #1a2332;
+        }
+
+        /* .scaler fills the viewport and handles perspective + flex centering.
+           On mobile, JS sets transform: scale() on it so the book shrinks
+           without touching the book element or its 3D CSS at all. */
+        .scaler {
+            display: flex;
+            width: 100vw;
+            height: 100dvh;
+            perspective: 1000px;
+            transform-origin: 50% 50%;
+            /* JS sets transform: scale(n) here on mobile */
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .book {
@@ -1394,9 +1404,54 @@
         .sticker-tooltip.show {
             transform: translateX(-50%) translateY(0);
         }
+
+        /* =============================================
+           MOBILE RESPONSIVE STYLES
+           ============================================= */
+
+        /*
+         * The book is 300px x 500px when closed.
+         * When open (pages flipped), it spans ~600px wide (both pages side by side).
+         * JS updates --book-scale on resize and page change so the book always fits.
+         */
+
+        @media (max-width: 700px) {
+            .color-palette {
+                left: 0;
+                right: auto;
+                max-width: calc(100vw - 2em);
+            }
+
+            .toast {
+                right: 1em;
+                bottom: 4em;
+                font-size: 0.8em;
+                padding: 0.6em 1.2em;
+            }
+        }
+
+        /* Touch device enhancements */
+        @media (hover: none) and (pointer: coarse) {
+            .status-radio {
+                width: 20px;
+                height: 20px;
+            }
+
+            .page-fold-corner:hover::before,
+            .page-fold-corner:hover::after,
+            .history-page-fold:hover::before,
+            .history-page-fold:hover::after {
+                border-width: 0 0 0 0;
+            }
+
+            .doodle-canvas {
+                touch-action: none;
+            }
+        }
     </style>
 </head>
 <body>
+    <div class="scaler" id="scaler">
     <div class="book" id="book" style="--c: 0">
         <!-- Cover -->
         <div class="page" style="--i: 0">
@@ -1489,6 +1544,7 @@
             </div>
         </div>
     </div>
+    </div><!-- /.scaler -->
 
     <!-- Modal for task limit -->
     <div class="modal-overlay" id="taskLimitModal">
@@ -1910,7 +1966,28 @@
         }
 
         function updateBook() {
-            book.style.setProperty('--c', state.currentPage);
+            const scaler = document.getElementById('scaler');
+            const wasOpen = parseInt(book.style.getPropertyValue('--c') || '0') >= 1;
+            const willOpen = state.currentPage >= 1;
+
+            if (!wasOpen && willOpen) {
+                // Closed -> open on mobile: scale down first, then flip
+                // On desktop: flip immediately (no scale animation needed)
+                if (window.innerWidth <= 700) {
+                    scaleScaler();
+                    setTimeout(() => {
+                        book.style.setProperty('--c', state.currentPage);
+                    }, 650); // matches the 0.6s scaler transition + tiny buffer
+                } else {
+                    book.style.setProperty('--c', state.currentPage);
+                }
+            } else if (wasOpen && !willOpen) {
+                // Open -> closed: flip first, then ease the scale back up after
+                book.style.setProperty('--c', state.currentPage);
+                setTimeout(scaleScaler, 1050);
+            } else {
+                book.style.setProperty('--c', state.currentPage);
+            }
         }
 
         function createEmptyTask() {
@@ -2416,6 +2493,62 @@
         }
 
         init();
+
+        // ── Mobile responsive scaling ──────────────────────────────────────
+        // We scale the .scaler element (which contains perspective + the book).
+        // This means the book and all its 3D CSS are completely untouched.
+        // transform-origin: top left + translate to re-center after scaling.
+        function scaleScaler() {
+            const scaler = document.getElementById('scaler');
+            if (!scaler) return;
+
+            const BOOK_W = 300;
+            const BOOK_H = 500;
+
+            // When open, book visually occupies 2x width due to CSS translate: 50%
+            const isOpen = state.currentPage >= 1;
+            const contentW = isOpen ? BOOK_W * 2 : BOOK_W;
+            const contentH = BOOK_H;
+
+            const pad = 24;
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+
+            // Only scale down if content doesn't fit
+            const scaleX = (vw - pad * 2) / contentW;
+            const scaleY = (vh - pad * 2) / contentH;
+            const scale  = Math.min(scaleX, scaleY, 1);
+
+            if (scale >= 1) {
+                // Full size — reset to normal
+                scaler.style.transform = '';
+                scaler.style.width  = '';
+                scaler.style.height = '';
+            } else {
+                // Scale from top-left then translate to center in viewport
+                const scaledW = BOOK_W * 2 * scale; // scaler is always 100vw wide
+                const scaledH = contentH * scale;
+                const tx = (vw - vw * scale) / 2;
+                const ty = (vh - vh * scale) / 2;
+                scaler.style.transform = `scale(${scale}) translate(0,0)`;
+                scaler.style.transformOrigin = '50% 50%';
+                scaler.style.width  = '100vw';
+                scaler.style.height = '100dvh';
+            }
+        }
+
+        scaleScaler();
+        window.addEventListener('resize', () => {
+            const scaler = document.getElementById('scaler');
+            // Snap instantly on resize — no animation
+            if (scaler) scaler.style.transition = 'none';
+            scaleScaler();
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    if (scaler) scaler.style.transition = '';
+                });
+            });
+        });
     </script>
 </body>
 </html>
