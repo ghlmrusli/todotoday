@@ -16,6 +16,11 @@
     <meta name="twitter:image" content="https://todotodayy.vercel.app/og-image.png">
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✏️</text></svg>">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152x152.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
@@ -1406,6 +1411,96 @@
             transform: translateX(-50%) translateY(0);
         }
 
+
+        /* ── Name Sticker Modal ───────────────────────────────────────────── */
+        #nameStickerModal .modal-content {
+            max-width: 320px;
+            width: 90vw;
+            padding: 1.6em 1.6em 1.4em;
+        }
+
+        .modal-button-full {
+            width: 100%;
+            box-sizing: border-box;
+            padding-left: 1.6em;
+            padding-right: 1.6em;
+        }
+
+        .sticker-input-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 1.2em 0 1.4em;
+            cursor: text;
+        }
+
+        .sticker-input-wrap svg {
+            overflow: visible;
+        }
+
+        /* The foreignObject input inside the sticker */
+        .sticker-fo-input {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            font-family: Georgia, "Times New Roman", serif;
+            font-weight: bold;
+            color: #1a2332;
+            text-align: center;
+            letter-spacing: 0.05em;
+            caret-color: rgba(26,35,50,0.7);
+            padding: 0;
+            margin: 0;
+            display: block;
+            /* Prevent mobile zoom */
+            font-size: 16px;
+        }
+
+        .sticker-fo-input::placeholder {
+            color: rgba(26,35,50,0.35);
+        }
+
+        .modal-title {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #1a2332;
+            margin-bottom: 0.3em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .modal-subtitle {
+            font-size: 0.82em;
+            color: #7a9ab0;
+            margin-bottom: 1.2em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+
+
+
+
+        /* User sticker on cover */
+        .user-sticker {
+            position: absolute;
+            bottom: 90px;
+            left: 36px;
+            cursor: pointer;
+            transition: transform 0.15s;
+            z-index: 10;
+            overflow: visible;
+        }
+
+        .user-sticker:hover {
+            transform: scale(1.08) rotate(-2deg);
+        }
+
+        .user-sticker text {
+            pointer-events: none;
+            user-select: none;
+        }
+
         /* =============================================
            MOBILE RESPONSIVE STYLES
            ============================================= */
@@ -1471,6 +1566,10 @@
                 <div class="sticker-year">
                     <span>2026</span>
                 </div>
+                <!-- User name sticker — injected by JS -->
+                <svg class="user-sticker" id="userStickerEl" style="display:none"
+                     width="120" height="54" viewBox="0 0 120 54">
+                </svg>
             </div>
             <div class="tooltip cover-tooltip" id="coverTooltip">Open the book</div>
             <div class="back cover">
@@ -1560,6 +1659,17 @@
             <span class="modal-emoji">🤭</span>
             <div class="modal-message">You have enough tasks for today, complete them all first</div>
             <button class="modal-button" id="modalOkButton">Ok</button>
+        </div>
+    </div>
+
+    <!-- Name Sticker Modal -->
+    <div class="modal-overlay" id="nameStickerModal">
+        <div class="modal-content">
+            <div class="modal-title">Add Name Sticker</div>
+            <div class="sticker-input-wrap" id="stickerInputWrap">
+                <!-- SVG sticker with foreignObject input rendered by JS -->
+            </div>
+            <button class="modal-button modal-button-full" id="nameStickerSave">Save</button>
         </div>
     </div>
 
@@ -1666,17 +1776,37 @@
             const coverFront = coverPage.querySelector('.front.cover');
             if (coverFront) {
                 coverFront.addEventListener('click', (e) => {
-                    if (state.currentPage === 0) {
-                        // Trigger slide-down animation on tooltip
-                        const coverTooltip = document.getElementById('coverTooltip');
-                        if (coverTooltip) {
-                            coverTooltip.classList.remove('show');
-                            coverTooltip.classList.add('hide');
-                        }
-                        
-                        state.currentPage = 1;
-                        updateBook();
+                    // If the user clicked their own name sticker, open the modal
+                    if (e.target.closest('#userStickerEl')) {
+                        e.stopPropagation();
+                        openNameStickerModal();
+                        return;
                     }
+
+                    if (state.currentPage === 0) {
+                        if (!hasUserSticker()) {
+                            // First ever tap — ask for their name first
+                            openNameStickerModal();
+                        } else {
+                            // Returning user — open the book
+                            const coverTooltip = document.getElementById('coverTooltip');
+                            if (coverTooltip) {
+                                coverTooltip.classList.remove('show');
+                                coverTooltip.classList.add('hide');
+                            }
+                            state.currentPage = 1;
+                            updateBook();
+                        }
+                    }
+                });
+            }
+
+            // Sticker click (separate handler so it works even during page turns)
+            const userStickerEl = document.getElementById('userStickerEl');
+            if (userStickerEl) {
+                userStickerEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openNameStickerModal();
                 });
             }
             
@@ -1694,6 +1824,21 @@
                             coverTooltip.classList.remove('hide');
                         }
                     }
+                });
+            }
+
+            // Tap on empty task page area (mobile) → add new task
+            const taskPageFront = pages[1].querySelector('.front');
+            if (taskPageFront) {
+                taskPageFront.addEventListener('click', (e) => {
+                    // Only trigger on mobile, only when book is open to task page
+                    if (window.innerWidth > 700) return;
+                    if (state.currentPage < 1) return;
+                    // Don't trigger if tapping an existing input, button, or radio
+                    if (e.target.closest('.task-text, .add-button, .doodle-button, .status-radio, .page-fold-corner')) return;
+                    // Only if there's room for more tasks
+                    if (state.tasks.length >= 12) return;
+                    createEmptyTask();
                 });
             }
 
@@ -2518,6 +2663,153 @@
             } else {
                 state.tasks = [];
             }
+        }
+
+
+        // ── Name Sticker ─────────────────────────────────────────────────────
+
+        // ── Name Sticker (single gold oval) ─────────────────────────────────
+
+        const STICKER_SHAPE = {
+            id: 'oval',
+            bgColors: ['#FFD23C','#DCA000'],
+            path: (w,h) => `<ellipse cx="${w/2}" cy="${h/2}" rx="${w/2-2}" ry="${h/2-2}" fill="url(#sg)" stroke="rgba(26,35,50,0.2)" stroke-width="0.5"/>`,
+            svgW: 160, svgH: 70
+        };
+
+        function buildCoverStickerSVG(name) {
+            const { svgW: w, svgH: h, bgColors, path } = STICKER_SHAPE;
+            const [c1, c2] = bgColors;
+            const label = name || '';
+            const availW = w * 0.72;
+            let fs = Math.min(availW / Math.max(label.length, 1) * 1.55, h * 0.34);
+            fs = Math.max(fs, 9);
+            const textEl = label
+                ? `<text x="${w/2}" y="${h/2}" dominant-baseline="central" text-anchor="middle"
+                    font-family="Georgia,'Times New Roman',serif"
+                    font-size="${fs.toFixed(1)}" font-weight="bold"
+                    fill="#1a2332" letter-spacing="0.05em">${label}</text>`
+                : '';
+            return `<defs><linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="${c1}"/>
+                <stop offset="100%" stop-color="${c2}"/>
+            </linearGradient></defs>${path(w,h)}${textEl}`;
+        }
+
+        function renderStickerModal() {
+            const wrap = document.getElementById('stickerInputWrap');
+            if (!wrap) return;
+            const { svgW: w, svgH: h, bgColors, path } = STICKER_SHAPE;
+            const [c1, c2] = bgColors;
+            const saved = JSON.parse(localStorage.getItem('userSticker') || 'null');
+            const currentName = saved ? saved.name : '';
+
+            // Render as SVG with foreignObject input overlaid on the sticker
+            wrap.innerHTML = `
+                <svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="overflow:visible">
+                    <defs>
+                        <linearGradient id="sg_modal" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="${c1}"/>
+                            <stop offset="100%" stop-color="${c2}"/>
+                        </linearGradient>
+                        <clipPath id="oval_clip">
+                            <ellipse cx="${w/2}" cy="${h/2}" rx="${w/2-2}" ry="${h/2-2}"/>
+                        </clipPath>
+                    </defs>
+                    <ellipse cx="${w/2}" cy="${h/2}" rx="${w/2-2}" ry="${h/2-2}"
+                        fill="url(#sg_modal)" stroke="rgba(26,35,50,0.2)" stroke-width="0.5"/>
+                    <foreignObject x="10" y="0" width="${w-20}" height="${h}" clip-path="url(#oval_clip)">
+                        <div xmlns="http://www.w3.org/1999/xhtml"
+                             style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+                            <style>#stickerNameInput::placeholder{color:rgba(255,255,255,0.8)}</style>
+                            <input id="stickerNameInput" type="text" maxlength="12"
+                                value="${currentName}"
+                                placeholder="Name"
+                                autocomplete="off" autocorrect="off" spellcheck="false"
+                                style="width:100%;background:transparent;border:none;outline:none;
+                                       font-family:Georgia,'Times New Roman',serif;font-weight:bold;
+                                       font-size:16px;color:#1a2332;text-align:center;
+                                       letter-spacing:0.05em;caret-color:rgba(26,35,50,0.7);
+                                       padding:0;margin:0;"
+                                oninput="this.style.color='#1a2332'"
+                            />
+                        </div>
+                    </foreignObject>
+                </svg>`;
+        }
+
+        function applyUserStickerTocover() {
+            const saved = JSON.parse(localStorage.getItem('userSticker') || 'null');
+            const el = document.getElementById('userStickerEl');
+            if (!el) return;
+            if (!saved || !saved.name) { el.style.display = 'none'; return; }
+            const { svgW: w, svgH: h } = STICKER_SHAPE;
+            const coverW = Math.round(w * 0.8);
+            const coverH = Math.round(h * 0.8);
+            el.setAttribute('width', coverW);
+            el.setAttribute('height', coverH);
+            el.setAttribute('viewBox', `0 0 ${w} ${h}`);
+            el.style.transform = 'rotate(-15deg)';
+            el.innerHTML = buildCoverStickerSVG(saved.name);
+            el.style.display = '';
+        }
+
+        function openNameStickerModal() {
+            renderStickerModal();
+            document.getElementById('nameStickerModal').classList.add('show');
+            setTimeout(() => {
+                const inp = document.getElementById('stickerNameInput');
+                if (inp) { inp.focus(); inp.select(); }
+            }, 300);
+        }
+
+        function closeNameStickerModal() {
+            document.getElementById('nameStickerModal').classList.remove('show');
+        }
+
+        // Save button
+        document.getElementById('nameStickerSave').addEventListener('click', () => {
+            const inp = document.getElementById('stickerNameInput');
+            const name = inp ? inp.value.trim() : '';
+            if (!name) {
+                if (inp) {
+                    inp.style.color = '#e53e3e';
+                    inp.focus();
+                    setTimeout(() => { inp.style.color = ''; }, 800);
+                }
+                return;
+            }
+            const wasFirstTime = !hasUserSticker();
+            localStorage.setItem('userSticker', JSON.stringify({ name, shapeId: 'oval' }));
+            applyUserStickerTocover();
+            closeNameStickerModal();
+
+            if (wasFirstTime) {
+                setTimeout(() => {
+                    const coverTooltip = document.getElementById('coverTooltip');
+                    if (coverTooltip) {
+                        coverTooltip.classList.remove('show');
+                        coverTooltip.classList.add('hide');
+                    }
+                    state.currentPage = 1;
+                    updateBook();
+                }, 600);
+            }
+        });
+
+        // Close on backdrop click
+        document.getElementById('nameStickerModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('nameStickerModal')) closeNameStickerModal();
+        });
+
+        // Load sticker on start
+        applyUserStickerTocover();
+
+
+        // Track first-time vs returning user for cover tap behaviour
+        function hasUserSticker() {
+            const s = JSON.parse(localStorage.getItem('userSticker') || 'null');
+            return !!(s && s.name);
         }
 
         init();
