@@ -16,11 +16,12 @@
     <meta name="twitter:image" content="https://todotodayy.vercel.app/og-image.png">
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✏️</text></svg>">
+
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png">
     <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152x152.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">    
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
@@ -390,6 +391,7 @@
             line-height: 1;
         }
 
+
         .tasks-container {
             flex: 1;
             overflow-y: hidden;
@@ -661,6 +663,18 @@
             transform: scale(0.95);
         }
 
+        .canvas-controls button:disabled,
+        .save-button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .canvas-controls button:disabled:hover,
+        .save-button:disabled:hover {
+            transform: none;
+            background: white;
+        }
+
         .canvas-controls button.active {
             background: #e0e0e0;
             border-color: #999;
@@ -795,65 +809,50 @@
 
         .thickness-slider {
             width: 100%;
-            height: 20px;
+            height: 28px;
             -webkit-appearance: none;
             appearance: none;
-            background: transparent;
             outline: none;
             cursor: pointer;
-            position: relative;
+            background: transparent;
+            touch-action: none;
+            display: block;
         }
 
-        .thickness-slider::before {
-            content: '';
-            position: absolute;
-            left: 0%;
-            right: 0%;
-            top: 50%;
-            transform: translateY(-50%);
-            height: 10px;
-            background: 
-                linear-gradient(90deg, 
-                    transparent 0%, 
-                    transparent calc(0% - 1px), 
-                    #333 0%, 
-                    #333 100%,
-                    transparent calc(100% + 1px),
-                    transparent 100%
-                );
-            clip-path: polygon(
-                0% 49%, 
-                0% 51%,
-                100% 0%,
-                100% 100%
-            );
-            pointer-events: none;
+        .thickness-slider::-webkit-slider-runnable-track {
+            height: 14px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='14'%3E%3Cpolygon points='0,13 200,0 200,14 0,14' fill='%23555'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+            border-radius: 2px;
+        }
+
+        .thickness-slider::-moz-range-track {
+            height: 14px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='14'%3E%3Cpolygon points='0,13 200,0 200,14 0,14' fill='%23555'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+            border-radius: 2px;
+            border: none;
         }
 
         .thickness-slider::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 18px;
-            height: 18px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
             background: white;
             cursor: pointer;
-            border: none;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-            position: relative;
-            z-index: 10;
+            border: 1px solid #ddd;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+            margin-top: -4px;
         }
 
         .thickness-slider::-moz-range-thumb {
-            width: 18px;
-            height: 18px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
             background: white;
             cursor: pointer;
-            border: none;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-            position: relative;
-            z-index: 10;
+            border: 1px solid #ddd;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
         }
 
         .color-option {
@@ -1036,6 +1035,62 @@
             height: 16px;
             color: #e74c3c;
         }
+
+        /* ── Doodle delete confirm popup ── */
+        .doodle-confirm-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9000;
+            display: none;
+        }
+        .doodle-confirm-overlay.show { display: block; }
+
+        .doodle-confirm-popup {
+            position: absolute;
+            background: white;
+            border-radius: 14px;
+            padding: 1em 1.1em 0.85em;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.12);
+            min-width: 160px;
+            text-align: center;
+            transform: translate(-50%, -50%);
+        }
+
+        .doodle-confirm-title {
+            font-size: 0.92em;
+            font-weight: 600;
+            color: #1a2332;
+            margin-bottom: 0.75em;
+            letter-spacing: 0.01em;
+        }
+
+        .doodle-confirm-actions {
+            display: flex;
+            gap: 0.5em;
+        }
+
+        .doodle-confirm-cancel,
+        .doodle-confirm-delete {
+            flex: 1;
+            padding: 0.45em 0;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            transition: opacity 0.15s;
+        }
+        .doodle-confirm-cancel {
+            background: #f0f2f4;
+            color: #555;
+        }
+        .doodle-confirm-cancel:hover { opacity: 0.75; }
+        .doodle-confirm-delete {
+            background: #e74c3c;
+            color: white;
+        }
+        .doodle-confirm-delete:hover { opacity: 0.85; }
 
         .history-item-download {
             position: absolute;
@@ -1662,6 +1717,17 @@
         </div>
     </div>
 
+    <!-- Doodle delete confirm popup -->
+    <div class="doodle-confirm-overlay" id="doodleConfirmOverlay">
+        <div class="doodle-confirm-popup" id="doodleConfirmPopup">
+            <div class="doodle-confirm-title">Sure?</div>
+            <div class="doodle-confirm-actions">
+                <button class="doodle-confirm-cancel" id="doodleConfirmCancel">Cancel</button>
+                <button class="doodle-confirm-delete" id="doodleConfirmDelete">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Name Sticker Modal -->
     <div class="modal-overlay" id="nameStickerModal">
         <div class="modal-content">
@@ -1837,7 +1903,7 @@
                     // Don't trigger if tapping an existing input, button, or radio
                     if (e.target.closest('.task-text, .add-button, .doodle-button, .status-radio, .page-fold-corner')) return;
                     // Only if there's room for more tasks
-                    if (state.tasks.length >= 12) return;
+                    if (state.tasks.length >= 11) return;
                     createEmptyTask();
                 });
             }
@@ -1924,6 +1990,16 @@
             canvas.style.width  = '100%';
             canvas.style.height = '100%';
             loadCanvasState();
+            // After loading, check if canvas has content
+            setTimeout(() => {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const hasPixels = imageData.data.some((v, i) => i % 4 === 3 && v > 0);
+                if (hasPixels && historyStep < 0) {
+                    drawingHistory = [canvas.toDataURL()];
+                    historyStep = 0;
+                }
+                updateDoodleButtons();
+            }, 50);
             // No resize listener needed — fixed resolution stays stable.
             
             let isDrawing = false;
@@ -1949,6 +2025,16 @@
                     drawingHistory.shift();
                     historyStep--;
                 }
+                updateDoodleButtons();
+            };
+
+            const updateDoodleButtons = () => {
+                // Canvas has doodle if history has more than initial blank state
+                const hasContent = historyStep > 0;
+                undoBtn.disabled   = !hasContent;
+                redoBtn.disabled   = !(historyStep < drawingHistory.length - 1);
+                clearBtn.disabled  = !hasContent;
+                if (saveBtn) saveBtn.disabled = !hasContent;
             };
             
             // Initial state
@@ -2014,12 +2100,7 @@
             
             clearBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                state.currentDoodleId = null;
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                localStorage.removeItem('doodleCanvas');
-                drawingHistory = [];
-                historyStep = -1;
-                saveHistory();
+                showDoodleDeleteConfirm('__canvas__', clearBtn);
             });
             
             undoBtn.addEventListener('click', (e) => {
@@ -2031,9 +2112,19 @@
                     img.onload = () => {
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.drawImage(img, 0, 0);
-                        saveCanvasState();
+                        // Save to localStorage but don't push new history entry
+                        localStorage.setItem('doodleCanvas', drawingHistory[historyStep]);
+                        updateDoodleButtons();
                     };
                 }
+            });
+
+            // Listen for canvas clear event from confirm popup
+            document.addEventListener('clearDoodleCanvas', () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawingHistory = [];
+                historyStep = -1;
+                saveHistory();
             });
             
             redoBtn.addEventListener('click', (e) => {
@@ -2045,7 +2136,9 @@
                     img.onload = () => {
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.drawImage(img, 0, 0);
-                        saveCanvasState();
+                        // Save to localStorage but don't push new history entry
+                        localStorage.setItem('doodleCanvas', drawingHistory[historyStep]);
+                        updateDoodleButtons();
                     };
                 }
             });
@@ -2156,8 +2249,8 @@
         }
 
         function createEmptyTask() {
-            // Don't allow more than 12 tasks
-            if (state.tasks.length >= 12) {
+            // Don't allow more than 11 tasks
+            if (state.tasks.length >= 11) {
                 return;
             }
             
@@ -2201,8 +2294,8 @@
         function renderTasks() {
             tasksContainer.innerHTML = '';
             
-            // Maximum 12 tasks allowed, no scrolling
-            const maxTasks = 12;
+            // Maximum 11 tasks allowed, no scrolling
+            const maxTasks = 11;
             
             // Render actual tasks
             state.tasks.forEach(task => {
@@ -2234,7 +2327,12 @@
                 textInput.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
+                        const val = e.target.value.trim();
                         e.target.blur();
+                        // On mobile 'Done' tap: if there's text, add another task
+                        if (val && state.tasks.length < 12) {
+                            createEmptyTask();
+                        }
                     }
                 });
                 
@@ -2254,6 +2352,7 @@
             
             // Update add button state
             updateAddButtonState();
+
         }
 
         function cycleStatus(taskId) {
@@ -2270,7 +2369,7 @@
         function updateAddButtonState() {
             const addButton = document.getElementById('addButton');
             if (addButton) {
-                if (state.tasks.length >= 12) {
+                if (state.tasks.length >= 11) {
                     addButton.classList.add('disabled');
                 } else {
                     addButton.classList.remove('disabled');
@@ -2448,47 +2547,7 @@
                         e.preventDefault();
                         e.stopImmediatePropagation();
                     }
-                    
-                    const deleteId = doodle.id;
-                    
-                    // Add deleting class for animation
-                    item.classList.add('deleting');
-                    
-                    // Wait for animation to complete before actually deleting
-                    setTimeout(() => {
-                        try {
-                            // Get current doodles
-                            const currentDoodles = JSON.parse(localStorage.getItem('doodleHistory') || '[]');
-                            
-                            // Filter out the deleted one
-                            const updatedDoodles = currentDoodles.filter(d => d.id !== deleteId);
-                            
-                            // Renumber
-                            updatedDoodles.forEach((d, i) => {
-                                d.name = `Doodle ${i + 1}`;
-                            });
-                            
-                            // Save
-                            localStorage.setItem('doodleHistory', JSON.stringify(updatedDoodles));
-                            
-                            // Clear canvas if needed
-                            if (state.currentDoodleId === deleteId) {
-                                state.currentDoodleId = null;
-                                const canvas = document.getElementById('doodleCanvas');
-                                if (canvas) {
-                                    const ctx = canvas.getContext('2d');
-                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                    localStorage.removeItem('doodleCanvas');
-                                }
-                            }
-                            
-                            // Re-render
-                            renderDoodleHistory();
-                        } catch (error) {
-                            // Silent error
-                        }
-                    }, 400); // Match the CSS transition duration
-                    
+                    showDoodleDeleteConfirm(doodle.id, item);
                     return false;
                 };
                 
@@ -2514,36 +2573,18 @@
         }
 
         function handleDeleteDoodle(deleteId) {
-            console.log('handleDeleteDoodle called with:', deleteId);
-            
-            // Get current doodles
             const currentDoodles = JSON.parse(localStorage.getItem('doodleHistory') || '[]');
-            console.log('Before delete, count:', currentDoodles.length);
-            
-            // Filter out the deleted one
             const updatedDoodles = currentDoodles.filter(d => d.id !== deleteId);
-            console.log('After delete, count:', updatedDoodles.length);
-            
-            // Renumber
-            updatedDoodles.forEach((d, i) => {
-                d.name = `Doodle ${i + 1}`;
-            });
-            
-            // Save
+            updatedDoodles.forEach((d, i) => { d.name = `Doodle ${i + 1}`; });
             localStorage.setItem('doodleHistory', JSON.stringify(updatedDoodles));
-            
-            // Clear canvas if needed
             if (state.currentDoodleId === deleteId) {
                 state.currentDoodleId = null;
                 const canvas = document.getElementById('doodleCanvas');
                 if (canvas) {
-                    const ctx = canvas.getContext('2d');
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
                     localStorage.removeItem('doodleCanvas');
                 }
             }
-            
-            // Re-render
             renderDoodleHistory();
         }
 
@@ -2802,6 +2843,59 @@
             if (e.target === document.getElementById('nameStickerModal')) closeNameStickerModal();
         });
 
+        // ── Doodle delete confirmation popup ──────────────────────────────
+        let _pendingDeleteId = null;
+
+        function showDoodleDeleteConfirm(deleteId, triggerEl) {
+            _pendingDeleteId = deleteId;
+            const overlay = document.getElementById('doodleConfirmOverlay');
+            const popup   = document.getElementById('doodleConfirmPopup');
+
+            // Center popup in the doodle page
+            const doodleFront = document.querySelector('.doodle-page .front');
+            if (doodleFront) {
+                const pageRect = doodleFront.getBoundingClientRect();
+                popup.style.top  = (pageRect.top + pageRect.height / 2) + 'px';
+                popup.style.left = (pageRect.left + pageRect.width / 2) + 'px';
+            } else {
+                popup.style.top  = '50%';
+                popup.style.left = '50%';
+            }
+
+            overlay.classList.add('show');
+        }
+
+        function hideDoodleDeleteConfirm() {
+            document.getElementById('doodleConfirmOverlay').classList.remove('show');
+            _pendingDeleteId = null;
+        }
+
+        document.getElementById('doodleConfirmCancel').addEventListener('click', hideDoodleDeleteConfirm);
+
+        document.getElementById('doodleConfirmDelete').addEventListener('click', () => {
+            if (_pendingDeleteId === '__canvas__') {
+                // Clear the doodle canvas
+                const canvas = document.getElementById('doodleCanvas');
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+                state.currentDoodleId = null;
+                localStorage.removeItem('doodleCanvas');
+                // Reset drawing history — access via closure via initDoodleCanvas globals
+                // We emit a custom event that initDoodleCanvas listens to
+                document.dispatchEvent(new CustomEvent('clearDoodleCanvas'));
+            } else if (_pendingDeleteId) {
+                handleDeleteDoodle(_pendingDeleteId);
+            }
+            hideDoodleDeleteConfirm();
+        });
+
+        // Tap outside popup closes it
+        document.getElementById('doodleConfirmOverlay').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('doodleConfirmOverlay')) hideDoodleDeleteConfirm();
+        });
+
         // Load sticker on start
         applyUserStickerTocover();
 
@@ -2813,6 +2907,7 @@
         }
 
         init();
+
 
         // ── Mobile responsive scaling ──────────────────────────────────────
         // We scale the .scaler element (which contains perspective + the book).
