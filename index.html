@@ -428,6 +428,37 @@
             opacity: 0.5;
         }
 
+        .task-delete-btn {
+            flex-shrink: 0;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #bbb;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin-left: auto;
+            position: relative;
+            transition: background 0.15s;
+        }
+
+        .task-delete-btn:hover { background: #999; }
+
+        .task-delete-btn::before,
+        .task-delete-btn::after {
+            content: '';
+            position: absolute;
+            width: 7px;
+            height: 1.5px;
+            background: white;
+            border-radius: 1px;
+        }
+        .task-delete-btn::before { transform: rotate(45deg); }
+        .task-delete-btn::after  { transform: rotate(-45deg); }
+
         .status-radio {
             flex-shrink: 0;
             width: 15px;
@@ -2338,6 +2369,18 @@
                 
                 taskLine.appendChild(radio);
                 taskLine.appendChild(textInput);
+
+                if (task.status === 'done') {
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'task-delete-btn';
+                    delBtn.title = 'Delete';
+                    delBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteTask(task.id);
+                    });
+                    taskLine.appendChild(delBtn);
+                }
+
                 tasksContainer.appendChild(taskLine);
             });
             
